@@ -22,11 +22,11 @@ const SETTINGS = {
   WAKE_PHRASES: [
     "back to work", "let's get going", "lets go", "wake up",
     "are you there", "you there", "i need you", "come online",
-    "boot up", "on me", "listen up",
+    "boot up", "on me", "listen up", "wakey wakey. daddys home",
   ],
   SLEEP_PHRASES: [
     "stand down", "that's all", "that will be all", "go to sleep",
-    "stop listening", "dismissed", "take five",
+    "stop listening", "dismissed", "take five", "power down",
   ],
   STANDBY_LISTEN: true,           // when muted, keep an ear open for the
                                   //   wake phrase instead of going deaf
@@ -1004,6 +1004,7 @@ body.is-thinking .core-wrap{cursor:pointer}
       <button class="chip" type="button" data-tier="LIGHT">LIGHT</button>
       <button class="chip" type="button" data-tier="HEAVY">HEAVY</button>
     </span>
+    <button class="chip" id="buildChip" type="button" aria-label="Build and diagnostics">B—</button>
     <button class="chip" id="wipeChip" type="button" aria-label="Clear session">WIPE</button>
     <button class="chip" id="saveChip" type="button" aria-label="Export transcript">SAVE</button>
     <button class="chip" id="voiceToggle" type="button">VOICE —</button>
@@ -1101,6 +1102,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 "use strict";
 
 /* ─── shorthand ─── */
+const BUILD = 'B17 \u00b7 INTERRUPT';
 const $ = id => document.getElementById(id);
 const log = $('log'), input = $('cmdInput'), sendBtn = $('sendBtn'), micBtn = $('micBtn');
 const liveCaption = $('liveCaption');
@@ -1758,6 +1760,12 @@ function switchTier(t, followupText){
 }
 document.querySelectorAll('#tierTabs .chip').forEach(b=>
   b.addEventListener('click', ()=> switchTier(b.dataset.tier)));
+const buildChip = $('buildChip');
+if(buildChip){
+  buildChip.textContent = BUILD.split(' ')[0];
+  buildChip.title = BUILD + ' — tap to run diagnostics';
+  buildChip.addEventListener('click', ()=>{ try{ runDiagnostics(); }catch(_e){} });
+}
 const wipeBtn = $('wipeChip'), saveBtn = $('saveChip');
 if(wipeBtn) wipeBtn.addEventListener('click', ()=> wipeSession());
 if(saveBtn) saveBtn.addEventListener('click', ()=> exportTranscript());
@@ -2042,6 +2050,13 @@ const wakeRegex = new RegExp(
 const tempRegex = /^(?:go |be |get |switch to |enter |activate )?(serious|fun)(?:\s+(mode|protocol))?\b[,.!?:]?\s*([\s\S]*)$/i;
 
 function handleUtterance(text){
+  try{ routeUtterance(text); }
+  catch(err){
+    clientFault('command routing: ' + (err.message || err));
+    if(text) transmit(text);       /* never swallow the message */
+  }
+}
+function routeUtterance(text){
   input.value = '';
   if(liveCaption && !liveCaption.classList.contains('hint')) liveCaption.textContent = '';
   if(!text) return;
@@ -2500,7 +2515,6 @@ function systemPrompt(){
    outline, then writes part after part, resending only the outline and
    the tail of what it wrote (so cost stays bounded and the seams stay
    invisible), assembling everything into one downloadable document.  */
-const BUILD = 'B16 \u00b7 DRAFTING';
 const FG = (SETTINGS.FORGE || {});
 const FG_MAX_CHARS  = FG.MAX_CHARS  || 200000;
 const FG_MAX_PARTS  = FG.MAX_PARTS  || 60;
@@ -3251,7 +3265,9 @@ async function runDiagnostics(){
   const lines = [];
   lines.push('BUILD  ' + BUILD);
   lines.push(mark(typeof showWeather === 'function') + ' weather station present');
+  lines.push(mark(typeof showBlueprint === 'function') + ' drafting table (3D) present');
   lines.push(mark(typeof openSite === 'function') + ' site opener present');
+  lines.push(mark(typeof interrupt === 'function') + ' interrupt present');
   lines.push(mark(typeof startForge === 'function') + ' forge present');
   lines.push(mark(!!SR) + ' speech recognition ' + (SR ? 'available' : 'unavailable in this browser'));
   lines.push(mark(EAR.armed) + ' microphone ' + (EAR.denied ? 'blocked' : EAR.armed ? 'open' : 'not yet opened'));
@@ -3654,7 +3670,8 @@ function initCore(){
   let W=0,H=0,R=0,cx=0,cy=0;
   const DPR = Math.min(window.devicePixelRatio||1, 2);
   function size(){
-    const r = cv.parentElement.getBoundingClientRect();
+    const host = cv.parentElement || cv;
+    const r = (host.getBoundingClientRect && host.getBoundingClientRect()) || {width:300,height:300};
     W = Math.max(60, r.width); H = Math.max(60, r.height);
     cv.width = W*DPR; cv.height = H*DPR;
     ctx.setTransform(DPR,0,0,DPR,0,0);
@@ -3936,8 +3953,8 @@ const HINTS = ['SAY \u201cJARVIS, BACK TO WORK\u201d','SAY \u201cFRIDAY, LET\u20
 (function(){ let hi = 0; const fh = $('footHint');
   if(fh && !reducedMotion) setInterval(()=>{ fh.textContent = HINTS[hi++ % HINTS.length]; }, 5200);
 })();
-initCore();
-try{ initRadar(); }catch(_e){}
+try{ initCore(); }catch(err){ clientFault('core: ' + (err.message||err)); }
+try{ initRadar(); }catch(err){ clientFault('radar: ' + (err.message||err)); }
 lintConfig();
 runBoot();
 
