@@ -881,6 +881,25 @@ body.tier-heavy .input-row .transmit{order:3}
 body.tier-heavy .input-row #pauseChip{order:4;display:flex}
 body.tier-heavy .mic{width:52px;height:52px}
 
+/* the interrupt: appears the moment the AI starts working, in every mode */
+.stopbtn{display:none;align-items:center;gap:7px;flex:none;cursor:pointer;
+  background:color-mix(in srgb, var(--alert) 12%, transparent);
+  border:1px solid color-mix(in srgb, var(--alert) 55%, transparent);
+  color:color-mix(in srgb, var(--alert) 78%, #fff 22%);
+  font-family:var(--font-mono);font-size:9px;letter-spacing:.22em;
+  padding:11px 13px;transition:all .2s;
+  animation:stopBreathe 1.5s ease-in-out infinite}
+.stopbtn svg{width:12px;height:12px;fill:currentColor}
+.stopbtn:hover{border-color:var(--alert);color:#fff;
+  background:color-mix(in srgb, var(--alert) 26%, transparent)}
+body.is-speaking .stopbtn,
+body.is-thinking .stopbtn{display:flex}
+@keyframes stopBreathe{50%{box-shadow:0 0 13px color-mix(in srgb, var(--alert) 34%, transparent)}}
+@media (max-width:520px){ .stopbtn .st-lbl{display:none} .stopbtn{padding:11px 12px} }
+/* while it works, the orb is a tap target too */
+body.is-speaking .core-wrap,
+body.is-thinking .core-wrap{cursor:pointer}
+
 .hvbtn{display:none;align-items:center;gap:8px;flex:none;cursor:pointer;
   background:none;border:1px solid var(--holo-faint);color:var(--holo-ghost);
   font-family:var(--font-mono);font-size:9px;letter-spacing:.24em;
@@ -1046,6 +1065,10 @@ body.tier-heavy .mic{width:52px;height:52px}
       <span class="prompt-char">❯</span>
       <input id="cmdInput" type="text" autocomplete="off" spellcheck="false"
              placeholder="SPEAK OR TYPE" aria-label="Message your assistant">
+      <button class="stopbtn" id="stopBtn" type="button" aria-label="Interrupt and speak">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+        <span class="st-lbl">INTERRUPT</span>
+      </button>
       <button class="hvbtn" id="pauseChip" type="button" aria-label="Pause work">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <rect x="7" y="5" width="3.6" height="14" rx="1"/>
@@ -2064,6 +2087,13 @@ function handleUtterance(text){
     return;
   }
 
+  /* 3.3 — spoken interrupt */
+  if(/^(?:stop|wait|hold on|hold up|enough|shut up|quiet|cancel that|never mind|nevermind)\b/i.test(text)
+     && text.trim().split(/\s+/).length <= 3){
+    interrupt();
+    return;
+  }
+
   /* 3.35 — dismissal: drop to standby, still listening for a summons */
   if(matchSleep(text)){
     const T = mode().USER_TITLE;
@@ -2331,6 +2361,7 @@ function addMsg(role, text){
   return body;
 }
 
+let activeTyper = null;
 function typeOut(body, text, done){
   if(reducedMotion){
     body.innerHTML = renderRich(escapeHTML(text));
@@ -2340,6 +2371,12 @@ function typeOut(body, text, done){
   const total = text.length;
   const step = total > 900 ? 4 : total > 400 ? 3 : total > 160 ? 2 : 1;
   const cur = '<span class="cursor"></span>';
+  const skip = ()=>{
+    clearTimeout(body._t);
+    body.innerHTML = renderRich(escapeHTML(text));
+    scrollLog();
+  };
+  activeTyper = skip;
   function frame(){
     try{
       i = Math.min(total, i + step);
@@ -2376,10 +2413,12 @@ function speechFor(text){
 }
 function deliver(body, text, after){
   if(body && body.dataset) body.dataset.raw = text;
+  const myTurn = ++turnSeq;
   setState('speaking');
   let ttsDone = !voiceOn, typeDone = false;
   const settle = ()=>{
     if(!(ttsDone && typeDone)) return;
+    if(myTurn !== turnSeq) return;      /* interrupted — leave the floor alone */
     setState(handsFree ? 'listening' : 'idle');
     if(handsFree) startListening();
     if(after) after();
@@ -2663,6 +2702,38 @@ function startForge(brief, kind, target){
     ', ' + mode().USER_TITLE + '. Press begin when you are ready.';
   speak(line);
 }
+
+/* ══════════════════════ THE INTERRUPT ════════════════════════════
+   Cuts the AI off mid-sentence in any mode: stops the voice, aborts a
+   request still in flight, snaps the half-typed reply to its full text
+   so nothing is lost, and hands the floor straight back to you with
+   the microphone already open.                                      */
+let currentAbort = null;
+let turnSeq = 0;
+function interrupt(){
+  turnSeq++;                       /* stale callbacks stop mattering */
+  try{ if(currentAbort) currentAbort.abort(); }catch(_e){}
+  currentAbort = null;
+  cancelSpeech();
+  if(activeTyper){ try{ activeTyper(); }catch(_e){} activeTyper = null; }
+  if(forge && forge.running){ forge.running = false; forge.state = 'STOPPED'; forgeUI(); }
+  pending = false;
+  if(sendBtn) sendBtn.disabled = false;
+  input.placeholder = 'SPEAK OR TYPE';
+  held = false; paintPause();
+  setState(handsFree ? 'listening' : 'idle');
+  if(handsFree){ pauseListening(); setTimeout(startListening, 120); }
+  else if(inputMode !== 'AUTO') input.focus();
+}
+const stopBtn = $('stopBtn');
+if(stopBtn) stopBtn.addEventListener('click', interrupt);
+/* the orb is a tap target while it works, and Escape always cuts in */
+if(coreWrap) coreWrap.addEventListener('click', ()=>{
+  if(pending || speaking) interrupt();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && (pending || speaking)){ e.preventDefault(); interrupt(); }
+});
 
 /* ─── the pause station ─── */
 let held = false;
@@ -3351,6 +3422,9 @@ async function uplink(override){
     req.tools = [{ type:'web_search_20250305', name:'web_search' }];
   }
   const payload = JSON.stringify(req);
+  /* an in-flight request can be cut off the instant you interrupt */
+  try{ if(window.AbortController) currentAbort = new AbortController(); }catch(_e){}
+  const signal = currentAbort ? currentAbort.signal : undefined;
   let res;
   const relay = relayUrl();
   if(relay){
@@ -3359,7 +3433,8 @@ async function uplink(override){
     res = await fetch(relay, {
       method:'POST',
       headers:{'Content-Type':'application/json','x-jarvis-code':effectiveCode()},
-      body:JSON.stringify({ system:sys, messages:msgs, tier:tier, maxTokens:maxTok })
+      body:JSON.stringify({ system:sys, messages:msgs, tier:tier, maxTokens:maxTok }),
+      signal
     });
   }else{
     /* Managed channel inside claude.ai needs no key; a standalone copy
@@ -3372,7 +3447,7 @@ async function uplink(override){
       headers['anthropic-dangerous-direct-browser-access'] = 'true';
     }
     res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST', headers, body:payload
+      method:'POST', headers, body:payload, signal
     });
   }
   const data = await res.json();
@@ -3431,6 +3506,9 @@ async function runTurn(){
         requestAuthorization('key', rejected);
         return;
       }
+    }
+    if(err && (err.name === 'AbortError' || /abort/i.test(err.message||''))){
+      return;                            /* you cut it off on purpose */
     }
     let detail = err.message || 'unknown fault';
     if(/failed to fetch|networkerror|load failed|network request failed/i.test(detail)){
@@ -3854,7 +3932,7 @@ function initRadar(){
 setInputMode(SETTINGS.INPUT_MODE);
 setTier(tier);
 try{ autoArm(); }catch(_e){}
-const HINTS = ['SAY \u201cJARVIS, BACK TO WORK\u201d','SAY \u201cFRIDAY, LET\u2019S GET GOING\u201d','SAY \u201cSTAND DOWN\u201d TO REST','\u201cHEAVY MODE\u201d \u00b7 \u201cLIGHT MODE\u201d','\u201cSERIOUS MODE\u201d \u00b7 \u201cFUN MODE\u201d','\u201cOPEN YOUTUBE\u201d','\u201cEXPORT TRANSCRIPT\u201d','\u201cCLEAR SESSION\u201d'];
+const HINTS = ['SAY \u201cJARVIS, BACK TO WORK\u201d','SAY \u201cFRIDAY, LET\u2019S GET GOING\u201d','SAY \u201cSTAND DOWN\u201d TO REST','\u201cHEAVY MODE\u201d \u00b7 \u201cLIGHT MODE\u201d','\u201cSERIOUS MODE\u201d \u00b7 \u201cFUN MODE\u201d','\u201cOPEN YOUTUBE\u201d','TAP INTERRUPT OR PRESS ESC TO CUT IN','\u201cEXPORT TRANSCRIPT\u201d','\u201cCLEAR SESSION\u201d'];
 (function(){ let hi = 0; const fh = $('footHint');
   if(fh && !reducedMotion) setInterval(()=>{ fh.textContent = HINTS[hi++ % HINTS.length]; }, 5200);
 })();
