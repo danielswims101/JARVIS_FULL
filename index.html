@@ -22,11 +22,11 @@ const SETTINGS = {
   WAKE_PHRASES: [
     "back to work", "let's get going", "lets go", "wake up",
     "are you there", "you there", "i need you", "come online",
-    "boot up", "on me", "listen up", "wakey wakey. daddys home",
+    "boot up", "on me", "listen up",
   ],
   SLEEP_PHRASES: [
     "stand down", "that's all", "that will be all", "go to sleep",
-    "stop listening", "dismissed", "take five", "power down",
+    "stop listening", "dismissed", "take five",
   ],
   STANDBY_LISTEN: true,           // when muted, keep an ear open for the
                                   //   wake phrase instead of going deaf
@@ -38,6 +38,10 @@ const SETTINGS = {
                                   //   misses you when you speak softly.
   MIN_CONFIDENCE: 0.45,           // discard transcripts the recognizer is
                                   //   unsure about (likely background chatter)
+  KEEP_FOCUS: true,               // true  → apps and links wait behind a tap
+                                  //   so JARVIS never loses focus and the
+                                  //   conversation keeps going.
+                                  // false → they open the moment you ask.
   HEAVY_ACCENT: "#e0243a",        // HEAVY / serious-work crimson
   SERIOUS_ACCENT: "#e0243a",      // serious mode runs crimson for everyone
   SERIOUS_MIX: 0.72,              // how far toward crimson: 1 = pure crimson,
@@ -882,7 +886,8 @@ body.tier-heavy .input-row #pauseChip{order:4;display:flex}
 body.tier-heavy .mic{width:52px;height:52px}
 
 /* the interrupt: appears the moment the AI starts working, in every mode */
-.stopbtn{display:none;align-items:center;gap:7px;flex:none;cursor:pointer;
+.stopbtn{display:flex;align-items:center;gap:7px;flex:none;cursor:pointer;
+  opacity:.35;
   background:color-mix(in srgb, var(--alert) 12%, transparent);
   border:1px solid color-mix(in srgb, var(--alert) 55%, transparent);
   color:color-mix(in srgb, var(--alert) 78%, #fff 22%);
@@ -893,7 +898,7 @@ body.tier-heavy .mic{width:52px;height:52px}
 .stopbtn:hover{border-color:var(--alert);color:#fff;
   background:color-mix(in srgb, var(--alert) 26%, transparent)}
 body.is-speaking .stopbtn,
-body.is-thinking .stopbtn{display:flex}
+body.is-thinking .stopbtn{opacity:1}
 @keyframes stopBreathe{50%{box-shadow:0 0 13px color-mix(in srgb, var(--alert) 34%, transparent)}}
 @media (max-width:520px){ .stopbtn .st-lbl{display:none} .stopbtn{padding:11px 12px} }
 /* while it works, the orb is a tap target too */
@@ -1102,7 +1107,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 "use strict";
 
 /* ─── shorthand ─── */
-const BUILD = 'B17 \u00b7 INTERRUPT';
+const BUILD = 'B18 \u00b7 BARGE-IN';
 const $ = id => document.getElementById(id);
 const log = $('log'), input = $('cmdInput'), sendBtn = $('sendBtn'), micBtn = $('micBtn');
 const liveCaption = $('liveCaption');
@@ -2230,13 +2235,7 @@ const APP_SCHEMES = {
   netflix:   ['nflx://',         'https://netflix.com'],
   youtube:   ['youtube://',      'https://youtube.com'],
 };
-function launchApp(name){
-  const key = name.toLowerCase().replace(/[^a-z]/g,'');
-  const entry = APP_SCHEMES[key];
-  if(!entry) return false;
-  const [scheme, web] = entry;
-  const T = mode().USER_TITLE;
-  const body = addMsg('link', null);
+function fireScheme(scheme){
   try{
     const f = document.createElement('iframe');
     f.style.display = 'none';
@@ -2244,13 +2243,35 @@ function launchApp(name){
     document.body.appendChild(f);
     setTimeout(()=>{ try{ f.remove(); }catch(_e){} }, 1500);
   }catch(_e){}
-  body.innerHTML = renderRich(escapeHTML(
-    'Launching ' + name + ', ' + T + '. If your system does not have it installed, ' +
-    'or blocks apps opened from a page, use the link below instead.')) +
-    (web ? '<br><a class="openbtn" href="' + escapeHTML(web) + '" target="_blank" rel="noopener">OPEN \u25b8 ' +
-      escapeHTML(name.toUpperCase()) + ' ON THE WEB</a>' : '');
-  pushHistory('assistant', 'Attempted to launch ' + name + '.');
-  speak('Launching ' + name + ', ' + T + '.');
+}
+function launchApp(name){
+  const key = name.toLowerCase().replace(/[^a-z]/g,'');
+  const entry = APP_SCHEMES[key];
+  if(!entry) return false;
+  const [scheme, web] = entry;
+  const T = mode().USER_TITLE;
+  const nice = name.toUpperCase();
+  const body = addMsg('link', null);
+  if(SETTINGS.KEEP_FOCUS){
+    /* Armed, not fired. Launching hands focus to another window and cuts
+       the conversation off, so it waits for one tap instead. */
+    body.innerHTML = renderRich(escapeHTML(
+      nice + ' is ready, ' + T + '. I am holding it here rather than jumping windows on you \u2014 ' +
+      'tap when you want it, and keep talking to me either way.')) +
+      '<br><button class="openbtn appgo" type="button" data-scheme="' + escapeHTML(scheme) + '">LAUNCH \u25b8 ' + escapeHTML(nice) + '</button>' +
+      (web ? ' <a class="openbtn" href="' + escapeHTML(web) + '" target="_blank" rel="noopener">ON THE WEB</a>' : '');
+    speak(nice + ' is ready when you are, ' + T + '.', ()=>{
+      setState(handsFree ? 'listening' : 'idle'); if(handsFree) startListening();
+    });
+  }else{
+    noteLeaving();
+    fireScheme(scheme);
+    body.innerHTML = renderRich(escapeHTML('Launching ' + name + ', ' + T + '.')) +
+      (web ? '<br><a class="openbtn" href="' + escapeHTML(web) + '" target="_blank" rel="noopener">OPEN \u25b8 ' +
+        escapeHTML(nice) + ' ON THE WEB</a>' : '');
+    speak('Launching ' + name + ', ' + T + '.');
+  }
+  pushHistory('assistant', nice + ' launch offered.');
   return true;
 }
 
@@ -2279,6 +2300,17 @@ function openSite(raw){
     if(launchApp(bare)) return;
   }
   const {url, label} = resolveURL(raw);
+  if(SETTINGS.KEEP_FOCUS){
+    const T = mode().USER_TITLE;
+    const body = addMsg('link', null);
+    const line = label + ' is ready, ' + T + '. Tap it when you want it \u2014 I will stay right here.';
+    body.innerHTML = renderRich(escapeHTML(line)) +
+      '<br><a class="openbtn" href="' + escapeHTML(url) + '" target="_blank" rel="noopener">OPEN \u25b8 ' + escapeHTML(label) + '</a>';
+    pushHistory('assistant', line);
+    speak(line, ()=>{ setState(handsFree ? 'listening' : 'idle'); if(handsFree) startListening(); });
+    return;
+  }
+  noteLeaving();
   const win = window.open(url, '_blank', 'noopener');
   const T = mode().USER_TITLE;
   const line = win
@@ -2717,6 +2749,33 @@ function startForge(brief, kind, target){
   speak(line);
 }
 
+/* ═══════════════ RETURNING FROM ANOTHER WINDOW ═══════════════════
+   Opening an app or a link hands focus to another window, and browsers
+   suspend the microphone in a background tab. So we remember that the
+   conversation was live, and pick it straight back up the moment you
+   come back — no tapping the ring again.                            */
+let resumeOnReturn = false;
+function noteLeaving(){
+  if(handsFree || standby) resumeOnReturn = true;
+}
+function comeBack(){
+  if(!resumeOnReturn) return;
+  resumeOnReturn = false;
+  if(!SR || inputMode === 'TYPE') return;
+  setTimeout(()=>{
+    if(!handsFree && !standby){ handsFree = true; micBtn.classList.add('live'); }
+    pauseListening();
+    startListening();
+    try{ if(held) setHeld(false); }catch(_e){}
+  }, 260);
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){ noteLeaving(); pauseListening(); }
+  else comeBack();
+});
+window.addEventListener('blur', noteLeaving);
+window.addEventListener('focus', comeBack);
+
 /* ══════════════════════ THE INTERRUPT ════════════════════════════
    Cuts the AI off mid-sentence in any mode: stops the voice, aborts a
    request still in flight, snaps the half-typed reply to its full text
@@ -2739,8 +2798,14 @@ function interrupt(){
   if(handsFree){ pauseListening(); setTimeout(startListening, 120); }
   else if(inputMode !== 'AUTO') input.focus();
 }
-const stopBtn = $('stopBtn');
-if(stopBtn) stopBtn.addEventListener('click', interrupt);
+const stopBtnEl = $('stopBtn');
+if(stopBtnEl) stopBtnEl.addEventListener('click', interrupt);
+/* a delegated listener as well, so the interrupt still works even if
+   the direct binding was lost to a re-render or a missing element */
+document.addEventListener('click', e=>{
+  const t = e.target;
+  if(t && t.closest && t.closest('#stopBtn')) interrupt();
+}, true);
 /* the orb is a tap target while it works, and Escape always cuts in */
 if(coreWrap) coreWrap.addEventListener('click', ()=>{
   if(pending || speaking) interrupt();
@@ -3366,6 +3431,14 @@ function copyText(t, btn){
 log.addEventListener('click', e=>{
   const t = e.target;
   if(!t || !t.closest) return;
+  const ag = t.closest('.appgo');
+  if(ag){
+    noteLeaving();
+    fireScheme(ag.dataset.scheme || '');
+    ag.textContent = 'LAUNCHED \u2014 STILL LISTENING';
+    return;
+  }
+  if(t.closest('a.openbtn')) noteLeaving();
   const chip = t.closest('.copychip');
   if(chip){
     const codeEl = chip.parentElement && chip.parentElement.querySelector('code');
