@@ -22,11 +22,11 @@ const SETTINGS = {
   WAKE_PHRASES: [
     "back to work", "let's get going", "lets go", "wake up",
     "are you there", "you there", "i need you", "come online",
-    "boot up", "on me", "listen up",
+    "boot up", "on me", "listen up", "on your left", "beef steak",
   ],
   SLEEP_PHRASES: [
     "stand down", "that's all", "that will be all", "go to sleep",
-    "stop listening", "dismissed", "take five",
+    "stop listening", "dismissed", "take five", "power down", "rest for now",
   ],
   STANDBY_LISTEN: true,           // when muted, keep an ear open for the
                                   //   wake phrase instead of going deaf
@@ -103,8 +103,8 @@ const SETTINGS = {
      publish, since anyone reading the page could use it to spend
      your credits.                                                   */
   UPLINK: {
-    FUNCTION_URL: "",
-    ACCESS_CODE: "",
+    FUNCTION_URL: "https://gzqovsffnziumfbmqdes.supabase.co/functions/v1/jarvis-ai",
+    ACCESS_CODE: "IRON",
   },
 };
 
@@ -238,7 +238,7 @@ means dense, never incomplete.`,
     ACCENT: "#ffc341",              // EDITH gold
 
     GREETING: "EDITH online. State the problem.",
-    SWITCH_LINE: "EDITH has the deck.",
+    SWITCH_LINE: "EDITH has the deck. Drop the problem.",
     ACK: "Listening.",
 
     PERSONALITY: `You are cold, exact, and entirely without ornament. You do not
