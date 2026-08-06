@@ -38,10 +38,15 @@ const SETTINGS = {
                                   //   misses you when you speak softly.
   MIN_CONFIDENCE: 0.45,           // discard transcripts the recognizer is
                                   //   unsure about (likely background chatter)
-  KEEP_FOCUS: true,               // true  → apps and links wait behind a tap
-                                  //   so JARVIS never loses focus and the
-                                  //   conversation keeps going.
-                                  // false → they open the moment you ask.
+  KEEP_FOCUS: false,              // false → launch instantly, no tap needed
+                                  // true  → hold behind a button instead
+  LAUNCH_IN_WINDOW: true,         // open links in their own window rather
+                                  //   than a new tab. A new tab pushes
+                                  //   JARVIS into the background, where
+                                  //   browsers suspend the microphone; a
+                                  //   separate window leaves him visible
+                                  //   and listening on your other screen.
+  LAUNCH_SIZE: [1180, 820],       // that window's size
   HEAVY_ACCENT: "#e0243a",        // HEAVY / serious-work crimson
   SERIOUS_ACCENT: "#e0243a",      // serious mode runs crimson for everyone
   SERIOUS_MIX: 0.72,              // how far toward crimson: 1 = pure crimson,
@@ -1009,6 +1014,7 @@ body.is-thinking .core-wrap{cursor:pointer}
       <button class="chip" type="button" data-tier="LIGHT">LIGHT</button>
       <button class="chip" type="button" data-tier="HEAVY">HEAVY</button>
     </span>
+    <button class="chip" id="pinChip" type="button" aria-label="Keep on top">PIN</button>
     <button class="chip" id="buildChip" type="button" aria-label="Build and diagnostics">B—</button>
     <button class="chip" id="wipeChip" type="button" aria-label="Clear session">WIPE</button>
     <button class="chip" id="saveChip" type="button" aria-label="Export transcript">SAVE</button>
@@ -1107,7 +1113,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 "use strict";
 
 /* ─── shorthand ─── */
-const BUILD = 'B18 \u00b7 BARGE-IN';
+const BUILD = 'B19 \u00b7 ALWAYS-ON';
 const $ = id => document.getElementById(id);
 const log = $('log'), input = $('cmdInput'), sendBtn = $('sendBtn'), micBtn = $('micBtn');
 const liveCaption = $('liveCaption');
@@ -1765,6 +1771,56 @@ function switchTier(t, followupText){
 }
 document.querySelectorAll('#tierTabs .chip').forEach(b=>
   b.addEventListener('click', ()=> switchTier(b.dataset.tier)));
+/* ═══════════ ALWAYS ON TOP — document picture-in-picture ══════════
+   Chrome and Edge can hand a page a small always-on-top window. We move
+   the whole deck into it, so JARVIS floats above whatever you launch and
+   keeps listening; closing it puts everything back where it was.     */
+let pipWin = null;
+const pinChip = $('pinChip');
+async function togglePin(){
+  if(pipWin){ try{ pipWin.close(); }catch(_e){} return; }
+  if(!window.documentPictureInPicture){
+    addMsg('fault', 'ALWAYS-ON-TOP UNAVAILABLE \u2014 this browser has no document ' +
+      'picture-in-picture. Chrome or Edge on a computer supports it. Meanwhile, ' +
+      'launches open in their own window, so this one stays visible and listening ' +
+      'as long as you do not minimise it or bury it behind a full-screen app.');
+    return;
+  }
+  try{
+    const stage = document.querySelector('.stage');
+    pipWin = await window.documentPictureInPicture.requestWindow({ width:460, height:720 });
+    /* carry the styling across */
+    document.querySelectorAll('style, link[rel="stylesheet"]').forEach(node=>{
+      pipWin.document.head.appendChild(node.cloneNode(true));
+    });
+    pipWin.document.body.style.margin = '0';
+    pipWin.document.body.className = document.body.className;
+    const atmos = document.querySelector('.atmosphere');
+    if(atmos) pipWin.document.body.appendChild(atmos);
+    pipWin.document.body.appendChild(stage);
+    pinChip.classList.add('on');
+    pinChip.textContent = 'UNPIN';
+    pipWin.addEventListener('pagehide', ()=>{
+      /* put the deck back exactly where it came from */
+      if(atmos) document.body.insertBefore(atmos, document.body.firstChild);
+      document.body.appendChild(stage);
+      pinChip.classList.remove('on');
+      pinChip.textContent = 'PIN';
+      pipWin = null;
+      comeBack();
+    });
+    /* the pinned window keeps its own body classes in step */
+    const sync = setInterval(()=>{
+      if(!pipWin){ clearInterval(sync); return; }
+      pipWin.document.body.className = document.body.className;
+    }, 400);
+  }catch(err){
+    pipWin = null;
+    clientFault('pin: ' + (err.message || err));
+  }
+}
+if(pinChip) pinChip.addEventListener('click', togglePin);
+
 const buildChip = $('buildChip');
 if(buildChip){
   buildChip.textContent = BUILD.split(' ')[0];
@@ -2235,6 +2291,21 @@ const APP_SCHEMES = {
   netflix:   ['nflx://',         'https://netflix.com'],
   youtube:   ['youtube://',      'https://youtube.com'],
 };
+/* Open a destination without burying JARVIS. A new tab makes this page
+   hidden, and a hidden page loses the microphone; a separate window
+   leaves it on screen and listening. */
+function openAway(url){
+  if(SETTINGS.LAUNCH_IN_WINDOW){
+    const s = SETTINGS.LAUNCH_SIZE || [1180, 820];
+    const feats = 'noopener,noreferrer,popup=yes,width=' + s[0] + ',height=' + s[1] +
+      ',left=' + Math.max(0, Math.round((screen.availWidth - s[0]) / 2)) +
+      ',top=' + Math.max(0, Math.round((screen.availHeight - s[1]) / 2));
+    const w = window.open(url, '_blank', feats);
+    if(w) return w;
+  }
+  return window.open(url, '_blank', 'noopener');
+}
+
 function fireScheme(scheme){
   try{
     const f = document.createElement('iframe');
@@ -2311,7 +2382,7 @@ function openSite(raw){
     return;
   }
   noteLeaving();
-  const win = window.open(url, '_blank', 'noopener');
+  const win = openAway(url);
   const T = mode().USER_TITLE;
   const line = win
     ? 'Opening ' + label + ' in a new tab, ' + T + '.'
@@ -2769,12 +2840,29 @@ function comeBack(){
     try{ if(held) setHeld(false); }catch(_e){}
   }, 260);
 }
+/* Losing focus is not the same as being hidden. If the window is still
+   on screen — say, on your other monitor while an app has focus — we
+   keep right on listening. Only a genuinely hidden page stands down. */
 document.addEventListener('visibilitychange', ()=>{
   if(document.hidden){ noteLeaving(); pauseListening(); }
   else comeBack();
 });
-window.addEventListener('blur', noteLeaving);
+window.addEventListener('blur', ()=>{
+  if(document.hidden) noteLeaving();     /* still visible → carry on */
+});
 window.addEventListener('focus', comeBack);
+
+/* A watchdog for background stalls: browsers throttle timers in windows
+   that are not focused, and recognition sometimes ends quietly. Every
+   couple of seconds, if we are meant to be listening and are not, we
+   start again. The live audio stream keeps this timer honest. */
+setInterval(()=>{
+  try{
+    if(!SR || document.hidden) return;
+    if(pending || speaking || held) return;
+    if((handsFree || standby) && !recActive) startListening();
+  }catch(_e){}
+}, 2200);
 
 /* ══════════════════════ THE INTERRUPT ════════════════════════════
    Cuts the AI off mid-sentence in any mode: stops the voice, aborts a
@@ -3438,7 +3526,15 @@ log.addEventListener('click', e=>{
     ag.textContent = 'LAUNCHED \u2014 STILL LISTENING';
     return;
   }
-  if(t.closest('a.openbtn')) noteLeaving();
+  const oa = t.closest('a.openbtn');
+  if(oa){
+    noteLeaving();
+    if(SETTINGS.LAUNCH_IN_WINDOW && oa.href){
+      e.preventDefault();
+      openAway(oa.href);
+      return;
+    }
+  }
   const chip = t.closest('.copychip');
   if(chip){
     const codeEl = chip.parentElement && chip.parentElement.querySelector('code');
