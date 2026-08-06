@@ -22,11 +22,11 @@ const SETTINGS = {
   WAKE_PHRASES: [
     "back to work", "let's get going", "lets go", "wake up",
     "are you there", "you there", "i need you", "come online",
-    "boot up", "on me", "listen up", "on your left", "beef steak",
+    "boot up", "on me", "listen up",
   ],
   SLEEP_PHRASES: [
     "stand down", "that's all", "that will be all", "go to sleep",
-    "stop listening", "dismissed", "take five", "power down", "rest for now",
+    "stop listening", "dismissed", "take five",
   ],
   STANDBY_LISTEN: true,           // when muted, keep an ear open for the
                                   //   wake phrase instead of going deaf
@@ -238,7 +238,7 @@ means dense, never incomplete.`,
     ACCENT: "#ffc341",              // EDITH gold
 
     GREETING: "EDITH online. State the problem.",
-    SWITCH_LINE: "EDITH has the deck. Drop the problem.",
+    SWITCH_LINE: "EDITH has the deck.",
     ACK: "Listening.",
 
     PERSONALITY: `You are cold, exact, and entirely without ornament. You do not
@@ -2461,7 +2461,7 @@ function systemPrompt(){
    outline, then writes part after part, resending only the outline and
    the tail of what it wrote (so cost stays bounded and the seams stay
    invisible), assembling everything into one downloadable document.  */
-const BUILD = 'B15 \u00b7 WEATHER';
+const BUILD = 'B16 \u00b7 DRAFTING';
 const FG = (SETTINGS.FORGE || {});
 const FG_MAX_CHARS  = FG.MAX_CHARS  || 200000;
 const FG_MAX_PARTS  = FG.MAX_PARTS  || 60;
@@ -3205,7 +3205,11 @@ async function runDiagnostics(){
       if(r.ok && j.content) probe = '\u2713 relay answered normally';
       else if(j.error) probe = '\u2717 relay error: ' + (j.error.message || 'unknown');
       else probe = '\u2717 relay returned HTTP ' + r.status;
-    }catch(err){ probe = '\u2717 relay unreachable: ' + (err.message || err); }
+    }catch(err){
+      probe = '\u2717 relay unreachable: ' + (err.message || err) +
+        ' \u2014 the request never reached Supabase. Check that the project is awake ' +
+        'and the jarvis-ai function is deployed.';
+    }
   }
   const note = 'If the weather station line shows a cross, this page is an older build \u2014 replace jarvis.html and hard refresh. ' +
     'If live web search is missing, redeploy the Supabase function; the search tool is attached server side.';
@@ -3428,7 +3432,17 @@ async function runTurn(){
         return;
       }
     }
-    const fb = addMsg('fault', 'UPLINK DISRUPTED — ' + err.message);
+    let detail = err.message || 'unknown fault';
+    if(/failed to fetch|networkerror|load failed|network request failed/i.test(detail)){
+      detail = 'the relay could not be reached at all — the request never left the building.' +
+        '\nMost likely, in order:' +
+        '\n1. Supabase paused the project for inactivity. Open your dashboard; it wakes on visit.' +
+        '\n2. The jarvis-ai function is not deployed, or was renamed.' +
+        '\n3. FUNCTION_URL has a typo. It must end in /functions/v1/jarvis-ai' +
+        '\n4. This page was opened as a local file, or the device is offline.' +
+        '\nSay "diagnostics" to have me probe the relay and report back.';
+    }
+    const fb = addMsg('fault', 'UPLINK DISRUPTED — ' + detail);
     fb.innerHTML += '<br><button class="retrybtn" type="button">RETRY \u25b8</button>';
     setState(handsFree ? 'listening' : 'idle');
     if(handsFree) startListening();
