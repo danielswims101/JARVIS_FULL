@@ -47,7 +47,8 @@ const SETTINGS = {
                                   //   separate window leaves him visible
                                   //   and listening on your other screen.
   LAUNCH_SIZE: [1180, 820],       // that window's size
-  HEAVY_ACCENT: "#e0243a",        // HEAVY / serious-work crimson
+  HEAVY_ACCENT: "#ff6a1f",        // HEAVY: forge orange, so deep work is
+                                  //   never mistaken for serious crimson
   SERIOUS_ACCENT: "#e0243a",      // serious mode runs crimson for everyone
   SERIOUS_MIX: 0.72,              // how far toward crimson: 1 = pure crimson,
                                   //   0.72 keeps a trace of each identity so
@@ -113,7 +114,10 @@ const SETTINGS = {
      your credits.                                                   */
   UPLINK: {
     FUNCTION_URL: "https://gzqovsffnziumfbmqdes.supabase.co/functions/v1/jarvis-ai",
-    ACCESS_CODE: "IRON",
+    /* Leave this EMPTY on anything you publish. A code written here is
+       visible to anyone who views the page source, and lets them spend
+       your credits. JARVIS will warn you on screen if you forget. */
+    ACCESS_CODE: "",
   },
 };
 
@@ -302,7 +306,8 @@ apology. You are not unkind; you simply regard comfort as noise.`,
   --holo-soft:  color-mix(in srgb, var(--holo) 72%, #fff 8%);
   --holo-line:  color-mix(in srgb, var(--holo) 30%, transparent);
   --holo-faint: color-mix(in srgb, var(--holo) 13%, transparent);
-  --holo-ghost: color-mix(in srgb, var(--holo) 55%, transparent);
+  --holo-ghost: color-mix(in srgb, var(--holo) 78%, transparent);
+  --holo-dim:   color-mix(in srgb, var(--holo) 62%, transparent);
   --panel:      color-mix(in srgb, var(--holo) 7%, rgba(1,6,20,.55));
   --void:#01040c;
   --font-display:'Michroma','Segoe UI',sans-serif;
@@ -416,7 +421,7 @@ body{
 .pip{width:5px;height:5px;background:var(--holo);border-radius:50%;
      box-shadow:0 0 6px var(--holo);animation:breathe 2.4s ease-in-out infinite}
 .chip{
-  cursor:pointer;border:1px solid var(--holo-line);
+  font-size:11px;cursor:pointer;border:1px solid var(--holo-line);
   padding:3px 9px;color:var(--holo-ghost);
   background:color-mix(in srgb, var(--holo) 5%, transparent);
   transition:all .25s;user-select:none;
@@ -577,9 +582,12 @@ body.is-listening .wave i{animation:wv 1.7s ease-in-out infinite}
   border-bottom:1px solid var(--holo-faint);padding-bottom:1px}
 .lat-bars i{flex:1;background:var(--holo-faint);border-top:1px solid var(--holo-ghost);
   min-height:2px;transition:height .5s}
-.directive{display:flex;gap:9px;padding:8px 0;line-height:1.55;
-  font-family:var(--font-mono);font-size:9px;letter-spacing:.03em;
-  color:color-mix(in srgb, var(--holo-soft) 82%, transparent)}
+.directive{display:flex;gap:9px;padding:9px 0;line-height:1.6;width:100%;
+  text-align:left;background:none;border:0;cursor:pointer;
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.02em;
+  color:var(--holo-soft)}
+.directive::after{content:"\25be";margin-left:auto;flex:none;opacity:.7;font-size:9px}
+.directive[aria-expanded="true"]::after{content:"\25b4"}
 .directive + .directive{border-top:1px solid color-mix(in srgb, var(--holo) 8%, transparent)}
 .directive:first-child{padding-top:2px}
 .directive:last-child{padding-bottom:2px}
@@ -589,7 +597,7 @@ body.is-listening .wave i{animation:wv 1.7s ease-in-out infinite}
   background:color-mix(in srgb, var(--holo) 7%, transparent)}
 .directive span{display:-webkit-box;-webkit-line-clamp:2;
   -webkit-box-orient:vertical;overflow:hidden}
-.directive:hover span{-webkit-line-clamp:unset}
+.directive[aria-expanded="true"] span{-webkit-line-clamp:unset}
 
 /* ═══════════════ COMMAND CARD (the objective slot) ═══════════════ */
 .command{
@@ -640,7 +648,7 @@ body.io-auto .live-caption{display:block}
 /* asleep, but listening for its name */
 .mic.standby{
   color:var(--holo-ghost);
-  border-color:color-mix(in srgb, var(--holo) 34%, transparent);
+  border-color:var(--holo-dim);
   animation:standbyBreath 3.6s ease-in-out infinite;
 }
 @keyframes standbyBreath{
@@ -687,8 +695,8 @@ body.io-type .mic{display:none}
 body.io-type .transmit{display:flex !important}
 .command-foot{
   margin-top:8px;display:flex;justify-content:space-between;gap:12px;
-  font-family:var(--font-mono);font-size:8px;letter-spacing:.28em;
-  color:color-mix(in srgb, var(--holo) 36%, transparent);
+  font-family:var(--font-mono);font-size:11px;letter-spacing:.16em;
+  color:var(--holo-ghost);
 }
 .command-foot span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
@@ -765,7 +773,7 @@ body.io-auto .log .msg.forge{display:block}
 .bp-stage:active{cursor:grabbing}
 .bp-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .bp-hint{position:absolute;left:9px;bottom:7px;font-family:var(--font-mono);
-  font-size:8px;letter-spacing:.2em;color:color-mix(in srgb, var(--holo) 45%, transparent);
+  font-size:8px;letter-spacing:.2em;color:var(--holo-dim);
   pointer-events:none}
 .bp-read{position:absolute;right:9px;top:7px;text-align:right;
   font-family:var(--font-mono);font-size:8px;letter-spacing:.16em;
@@ -820,7 +828,7 @@ body.io-auto .log .msg.bp{display:block}
   box-shadow:0 0 7px var(--holo-ghost)}
 .wx-day .hi{color:var(--holo-bright)}
 .wx-note{margin-top:9px;font-family:var(--font-mono);font-size:8.5px;
-  letter-spacing:.12em;color:color-mix(in srgb, var(--holo) 40%, transparent)}
+  letter-spacing:.12em;color:var(--holo-dim)}
 body.io-auto .log .msg.card{display:block}
 
 /* HEAVY tier: deliverables stay visible even in silent AUTO */
@@ -925,16 +933,37 @@ body.is-thinking .core-wrap{cursor:pointer}
   body.tier-heavy .hvbtn .pz-lbl{display:none}
 }
 
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+
+/* ── keyboard focus must be visible on every control ── */
+.openbtn:focus-visible, .copychip:focus-visible, .copymsg:focus-visible,
+.forgebtn:focus-visible, .bpbtn:focus-visible, .retrybtn:focus-visible,
+.stopbtn:focus-visible, .hvbtn:focus-visible, .auth-key:focus-visible,
+.appgo:focus-visible, .directive:focus-visible{
+  outline:2px solid var(--holo); outline-offset:2px; color:var(--holo-bright);
+}
+/* ── the chipbar scrolls sideways: show that it does ── */
+.chipbar{position:relative}
+.chipbar::after{
+  content:"";position:sticky;right:0;flex:none;width:24px;align-self:stretch;
+  margin-left:-24px;pointer-events:none;
+  background:linear-gradient(90deg, transparent, rgba(0,0,0,.85));
+}
+
 /* ═══════════════ RESPONSIVE: cockpit → handheld ══════════════════ */
 @media (max-width:1119px){
   .deck{display:flex;flex-direction:column;gap:8px}
   .stagecore{order:1}
   .core-wrap{width:min(34vh,62vw,240px)}
   .col.left{order:2;flex:1}
-  .col.left .syspanel{display:none}
+  /* the readouts that diagnose a problem stay; the sweep is ornament */
+  .col.left{display:flex;flex-direction:column}
+  .col.left .panel{display:none}
+  .col.left .syspanel, .col.left .logpanel{display:flex}
   .col.right{display:flex;flex-direction:column;order:3}
   .col.right .panel{display:none}
-  .col.right .proxpanel{display:flex}
+  .col.right .proxpanel{display:none}
   .bigclock{font-size:clamp(15px,4vw,20px)}
   .datesub:last-child{display:none}
 }
@@ -942,6 +971,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 /* ═════════════════════════ BOOT OVERLAY ══════════════════════════ */
 .boot{
   position:fixed;inset:0;z-index:10;
+  padding:max(24px,env(safe-area-inset-top)) 24px max(24px,env(safe-area-inset-bottom));
   background:
     radial-gradient(125% 95% at 50% 2%,
       color-mix(in srgb, var(--holo) 16%, #020918),
@@ -994,23 +1024,23 @@ body.is-thinking .core-wrap{cursor:pointer}
     <div class="timeblock">
       <div class="bigclock" id="bigClock">--:--:--</div>
       <div class="datesub"><span id="footDate">—</span> · LOCAL <b id="clock">--:--:--</b></div>
-      <div class="datesub">DIRECTIVES <b id="dirCount">0</b> · LINK <b>SECURE</b></div>
+      <div class="datesub">DIRECTIVES <b id="dirCount">0</b> · LINK <b id="vLink">—</b></div>
     </div>
   </header>
 
   <div class="chipbar">
-    <span class="tld"><span class="pip"></span><b id="stateReadout">STANDBY</b></span>
-    <span class="modes" id="modeTabs"></span>
-    <span class="modes" id="tempTabs">
+    <span class="tld"><span class="pip"></span><b id="stateReadout" role="status" aria-live="polite">STANDBY</b></span>
+    <span class="modes" id="modeTabs" role="radiogroup" aria-label="Identity"></span>
+    <span class="modes" id="tempTabs" role="radiogroup" aria-label="Temperament">
       <button class="chip" type="button" data-temp="FUN">FUN</button>
       <button class="chip" type="button" data-temp="SERIOUS">SERIOUS</button>
     </span>
-    <span class="modes" id="ioTabs">
+    <span class="modes" id="ioTabs" role="radiogroup" aria-label="Input mode">
       <button class="chip" type="button" data-io="AUTO">AUTO</button>
       <button class="chip" type="button" data-io="DICTATE">DICTATE</button>
       <button class="chip" type="button" data-io="TYPE">TYPE</button>
     </span>
-    <span class="modes" id="tierTabs">
+    <span class="modes" id="tierTabs" role="radiogroup" aria-label="Workload tier">
       <button class="chip" type="button" data-tier="LIGHT">LIGHT</button>
       <button class="chip" type="button" data-tier="HEAVY">HEAVY</button>
     </span>
@@ -1038,7 +1068,8 @@ body.is-thinking .core-wrap{cursor:pointer}
       </div>
       <div class="panel logpanel">
         <h3>TRANSMISSION LOG</h3>
-        <div class="log" id="log" aria-live="polite"></div>
+        <div class="log" id="log"></div>
+        <div id="srLog" class="sr-only" aria-live="polite"></div>
       </div>
     </aside>
 
@@ -1048,7 +1079,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 
     <aside class="col right">
       <div class="panel proxpanel">
-        <h3>PROXIMITY</h3>
+        <h3>FIELD SWEEP</h3>
         <div class="pad radarpad"><canvas id="radarCanvas" aria-hidden="true"></canvas></div>
       </div>
       <div class="panel">
@@ -1113,7 +1144,7 @@ body.is-thinking .core-wrap{cursor:pointer}
 "use strict";
 
 /* ─── shorthand ─── */
-const BUILD = 'B19 \u00b7 ALWAYS-ON';
+const BUILD = 'B21 \u00b7 AUDIT';
 const $ = id => document.getElementById(id);
 const log = $('log'), input = $('cmdInput'), sendBtn = $('sendBtn'), micBtn = $('micBtn');
 const liveCaption = $('liveCaption');
@@ -1124,9 +1155,13 @@ root.style.setProperty('--alert', SETTINGS.ALERT_COLOR);
 
 /* black box: any client-side exception prints on the HUD instead of
    dying silently, so a bug can always be read and reported */
-let faultCount = 0;
+const faultSeen = Object.create(null);
 function clientFault(msg){
-  if(faultCount++ > 2) return;
+  /* dedupe by message so one repeating fault cannot silence the log */
+  const key = String(msg).slice(0, 120);
+  faultSeen[key] = (faultSeen[key] || 0) + 1;
+  if(faultSeen[key] > 1) return;                 /* already reported once */
+  if(Object.keys(faultSeen).length > 8) return;  /* cap distinct faults */
   try{ addMsg('fault', 'CLIENT FAULT — ' + msg); }catch(_e){}
 }
 window.addEventListener('error', e=>
@@ -1230,6 +1265,19 @@ function scrollLog(){
 }
 
 /* ─── paint mode + temperament onto the chrome ─── */
+/* toggles must announce themselves, not rely on colour alone */
+function paintAria(){
+  ['#modeTabs','#tempTabs','#ioTabs','#tierTabs'].forEach(sel=>{
+    document.querySelectorAll(sel + ' .chip').forEach(b=>{
+      b.setAttribute('role','radio');
+      b.setAttribute('aria-checked', b.classList.contains('on') ? 'true' : 'false');
+    });
+  });
+  const vb = $('voiceToggle');
+  if(vb) vb.setAttribute('aria-pressed', vb.classList.contains('on') ? 'true' : 'false');
+  const pc = $('pinChip');
+  if(pc) pc.setAttribute('aria-pressed', pc.classList.contains('on') ? 'true' : 'false');
+}
 function paintMode(){
   const m = mode();
   const accent = accentNow();
@@ -1251,6 +1299,7 @@ function paintMode(){
     b.classList.toggle('on', b.dataset.temp === temperament));
   setFavicon();
   pickVoice();
+  try{ paintAria(); }catch(_e){}
 }
 
 /* mode tabs, built from whatever MODES contains */
@@ -1280,6 +1329,7 @@ document.querySelectorAll('#tempTabs .chip').forEach(b=>
 /* ─── clocks ─── */
 const bootTime = Date.now();
 function tick(){
+  if(document.hidden) return;      /* no DOM writes in a hidden tab */
   /* the ear is declared further down the file, so on the very first
      tick it does not exist yet — read it defensively */
   try{
@@ -1435,7 +1485,12 @@ function clearSpeechTimers(){
 }
 function cancelSpeech(){
   clearSpeechTimers();
-  try{ cancelSpeech(); }catch(_e){}
+  /* NOTE: this must call the browser API, never itself. A global
+     find-and-replace once turned this line into cancelSpeech(), which
+     recursed until the stack blew, silently swallowed the error, and
+     left every interrupt, mute and persona switch unable to stop the
+     voice. Do not "tidy" this line. */
+  try{ if('speechSynthesis' in window) window.speechSynthesis.cancel(); }catch(_e){}
   speaking = false;
 }
 
@@ -1577,6 +1632,7 @@ function meterLoop(){
   }else if(!speaking && EAR.level < EAR.floor * 1.4){
     EAR.floor = EAR.floor * 0.995 + EAR.level * 0.005;   /* slow re-drift */
   }
+  if(document.hidden){ setTimeout(meterLoop, 500); return; }   /* idle when hidden */
   if(recActive && !speaking && earOpen()) EAR.spoke = true;
   /* the AUDIO I/O panel becomes a true level meter */
   if(waveBars.length){
@@ -1615,8 +1671,13 @@ function matchWake(text){
         return { key, rest: after.slice(pAt + ph.length).trim() };
       }
     }
-    /* the name alone is enough to wake a sleeping ring */
-    if(!after) return { key, rest:'' };
+    /* A bare name wakes the ring — but FRIDAY and EDITH are ordinary
+       English words, so for those the name must START the utterance.
+       Otherwise "we'll do it Friday" wakes the room. */
+    if(!after){
+      const wordLike = nm !== 'jarvis';
+      if(!wordLike || at === 0) return { key, rest:'' };
+    }
   }
   /* no name, but an unmistakable summons — must open the sentence and
      stand nearly alone, so "I went back to work yesterday" is ignored */
@@ -1654,10 +1715,12 @@ function isLikelyNoise(text, conf){
          assume the floor drifted too high and recalibrate. */
       EAR.gateRejects = (EAR.gateRejects || 0) + 1;
       if(EAR.gateRejects >= 3){
+        /* The floor has drifted too high. Retune — but still reject this
+           utterance: admitting it would let a television through, and
+           losing one real sentence is far cheaper than that. */
         EAR.gateRejects = 0;
         EAR.floor = Math.max(0.006, EAR.floor * 0.6);
         EAR.calibrating = true; EAR.calSamples = [];
-        return false;                 /* let this one through while we retune */
       }
       return true;
     }
@@ -1743,6 +1806,9 @@ function setTier(t){
     paintMode();                 /* recolour orb, scope, sigil, favicon */
     paintPause();
     const vt = $('vTier'); if(vt) vt.textContent = tier;
+  /* report the real uplink rather than a decorative "SECURE" */
+  const vl = $('vLink');
+  if(vl) vl.textContent = relayUrl() ? 'RELAY' : (effectiveKey() ? 'DIRECT KEY' : 'MANAGED');
     const vb = $('vBuild'); if(vb) vb.textContent = BUILD;
     /* prove the theme actually took, rather than assuming it did */
     const live = (getComputedStyle(root).getPropertyValue('--holo')||'').trim().toLowerCase();
@@ -2001,6 +2067,16 @@ function pauseListening(){
   if(rec && recActive){ try{ rec.abort(); }catch(_e){} }
   recActive = false;
 }
+/* Hand the microphone back to the operating system. Nothing here ever
+   transmits audio, but holding the device open with no way to release
+   it is its own kind of rudeness. */
+function releaseEar(){
+  try{ if(EAR.stream) EAR.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(_e){} }); }catch(_e){}
+  try{ if(EAR.ctx && EAR.ctx.close) EAR.ctx.close(); }catch(_e){}
+  EAR.stream = null; EAR.ctx = null; EAR.analyser = null;
+  EAR.armed = false; EAR.level = 0; EAR.spoke = false;
+  EAR.calibrating = true; EAR.calSamples = [];
+}
 function standDown(keepEar){
   handsFree = false;
   dictating = false;
@@ -2016,6 +2092,7 @@ function standDown(keepEar){
     restartTimer = setTimeout(startListening, 400);
   }else{
     pauseListening();
+    releaseEar();                 /* fully off means the mic light goes out */
   }
   captionHint();
   if(!pending && !speaking) setState('idle');
@@ -2093,7 +2170,9 @@ if(SR){
       try{ rec.start(); }catch(_e){}
       return;
     }
-    if(handsFree){ standDown(); return; }   /* tap again to mute */
+    /* three states, cycled by tapping: open → standby → released */
+    if(handsFree){ standDown(true); return; }
+    if(standby){ standDown(false); return; }
     goHandsFree(false);
   });
 }else{
@@ -2295,15 +2374,31 @@ const APP_SCHEMES = {
    hidden, and a hidden page loses the microphone; a separate window
    leaves it on screen and listening. */
 function openAway(url){
+  /* Note: passing "noopener" in the feature string makes window.open
+     return null even when it succeeded, which would look like failure.
+     So we ask for a real handle and sever the opener afterwards. */
+  const cut = w => { try{ if(w) w.opener = null; }catch(_e){} return w; };
   if(SETTINGS.LAUNCH_IN_WINDOW){
     const s = SETTINGS.LAUNCH_SIZE || [1180, 820];
-    const feats = 'noopener,noreferrer,popup=yes,width=' + s[0] + ',height=' + s[1] +
-      ',left=' + Math.max(0, Math.round((screen.availWidth - s[0]) / 2)) +
-      ',top=' + Math.max(0, Math.round((screen.availHeight - s[1]) / 2));
-    const w = window.open(url, '_blank', feats);
-    if(w) return w;
+    const sw = (window.screen && screen.availWidth) || 1440;
+    const sh = (window.screen && screen.availHeight) || 900;
+    const feats = 'popup=yes,width=' + s[0] + ',height=' + s[1] +
+      ',left=' + Math.max(0, Math.round((sw - s[0]) / 2)) +
+      ',top=' + Math.max(0, Math.round((sh - s[1]) / 2));
+    let w = null;
+    try{ w = window.open(url, '_blank', feats); }catch(_e){}
+    if(w) return cut(w);
   }
-  return window.open(url, '_blank', 'noopener');
+  let w = null;
+  try{ w = window.open(url, '_blank'); }catch(_e){}
+  return cut(w);
+}
+
+let popupWarned = false;
+function popupHint(){
+  if(popupWarned) return;
+  popupWarned = true;
+  speak('Your browser blocked that window. Allow pop-ups for this site and I can open things the moment you ask.');
 }
 
 function fireScheme(scheme){
@@ -2385,11 +2480,15 @@ function openSite(raw){
   const win = openAway(url);
   const T = mode().USER_TITLE;
   const line = win
-    ? 'Opening ' + label + ' in a new tab, ' + T + '.'
-    : 'Ready on ' + label + ', ' + T + ' \u2014 your browser wants one tap for a voice-opened page. The link is on screen.';
+    ? 'Opening ' + label + ', ' + T + '. I am still listening.'
+    : 'Your browser blocked that window, ' + T + '. It stops pages opening things ' +
+      'unless you clicked \u2014 and a spoken command is not a click. Tap below for now, ' +
+      'and to make voice launches instant, allow pop-ups for this site: the blocked-popup ' +
+      'icon in the address bar, or Site settings, then Pop-ups and redirects, then Allow.';
   const body = addMsg('link', null);
   body.innerHTML = renderRich(escapeHTML(line)) +
     '<br><a class="openbtn" href="' + escapeHTML(url) + '" target="_blank" rel="noopener">OPEN \u25b8 ' + escapeHTML(label) + '</a>';
+  if(!win) popupHint();
   pushHistory('assistant', line);
   speak(line, ()=>{ setState(handsFree ? 'listening' : 'idle'); if(handsFree) startListening(); });
 }
@@ -2531,6 +2630,16 @@ function speechFor(text){
 }
 function deliver(body, text, after){
   if(body && body.dataset) body.dataset.raw = text;
+  /* one clean announcement per reply, instead of every streamed token */
+  try{
+    const sr = $('srLog');
+    if(sr && sr.appendChild){
+      const para = document.createElement('p');
+      para.textContent = mode().NAME + ' says: ' + text;
+      sr.appendChild(para);
+      while(sr.children.length > 4) sr.removeChild(sr.firstChild);
+    }
+  }catch(_e){}
   const myTurn = ++turnSeq;
   setState('speaking');
   let ttsDone = !voiceOn, typeDone = false;
@@ -3425,6 +3534,13 @@ async function runDiagnostics(){
   lines.push(mark(!!SR) + ' speech recognition ' + (SR ? 'available' : 'unavailable in this browser'));
   lines.push(mark(EAR.armed) + ' microphone ' + (EAR.denied ? 'blocked' : EAR.armed ? 'open' : 'not yet opened'));
   lines.push(mark(!!navigator.geolocation) + ' location service present');
+  let popOK = false;
+  try{
+    const t = window.open('', '_blank', 'width=120,height=120,left=-2000,top=-2000');
+    if(t){ popOK = true; t.close(); }
+  }catch(_e){}
+  lines.push(mark(popOK) + ' pop-ups ' + (popOK ? 'allowed — voice launches will open instantly'
+    : 'BLOCKED — allow pop-ups for this site so spoken launches open by themselves'));
   lines.push(mark(!!relayUrl()) + ' relay ' + (relayUrl() ? 'configured' : 'NOT configured \u2014 FUNCTION_URL is empty'));
   lines.push(mark(!!SETTINGS.WEB_SEARCH) + ' web search requested by this page');
   body.innerHTML = '<div class="wx"><div style="font-family:var(--font-mono);font-size:11px;line-height:2">' +
@@ -3783,6 +3899,17 @@ input.addEventListener('keydown', e=>{
 /* ─── config lint: catch the classic mix-ups before they cost a trip ─── */
 function lintConfig(){
   const problems = [];
+  /* the mistake that costs money: a live access code in a public page */
+  const code = ((SETTINGS.UPLINK && SETTINGS.UPLINK.ACCESS_CODE) || '').trim();
+  if(code && location && /^https?:/.test(location.protocol)){
+    problems.push('YOUR ACCESS CODE IS PUBLISHED IN THIS PAGE. Anyone who views the ' +
+      'source can read "' + code.slice(0,2) + '\u2026" and spend your credits. Rotate ' +
+      'JARVIS_ACCESS_CODE in Supabase, then set UPLINK.ACCESS_CODE back to "" \u2014 ' +
+      'I will ask you for it on screen instead, and keep it in memory only.');
+  }
+  if(code && code.length < 10){
+    problems.push('The access code is short enough to guess. Use a long passphrase.');
+  }
   const k = (SETTINGS.API_KEY || '').trim();
   if(k && /^https?:\/\//i.test(k)){
     problems.push('API_KEY contains a URL. That link belongs in SETTINGS.UPLINK.FUNCTION_URL — set API_KEY back to "" (empty).');
@@ -3806,7 +3933,7 @@ const bootLines = [
   ['TEMPERAMENT — ' + temperament + ' / SERIOUS ON COMMAND', 420],
   ['VOICE SYNTHESIS ' + (('speechSynthesis' in window) ? 'CALIBRATED' : 'UNAVAILABLE'), 390],
   ['AUDITORY SENSORS ' + (SR ? 'ARMED — TAP THE RING TO GO HANDS-FREE' : 'UNAVAILABLE'), 420],
-  ['SECURE UPLINK — ' + (relayUrl() ? 'RELAY VIA SUPABASE' : effectiveKey() ? 'PERSONAL KEY' : 'MANAGED CHANNEL'), 390],
+  ['UPLINK — ' + (relayUrl() ? 'RELAY VIA SUPABASE' : effectiveKey() ? 'PERSONAL KEY' : 'MANAGED CHANNEL'), 390],
   ['ALL SYSTEMS NOMINAL', 500],
 ];
 function runBoot(){
